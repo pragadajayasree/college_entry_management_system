@@ -3,7 +3,8 @@ services:
     name: college-entry-app
     env: python
     buildCommand: pip install -r requirements.txt
-    startCommand: gunicorn main:app
+    sstartCommand: gunicorn clg_app.main:app
+
     envVars:
       - key: SECRET_KEY
         value: your-secret-key
