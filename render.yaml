@@ -4,6 +4,7 @@ services:
     env: python
     buildCommand: pip install -r requirements.txt
     startCommand: gunicorn clg_app.main:app
+
     envVars:
       - key: SECRET_KEY
         value: your-secret-key
