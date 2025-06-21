@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: college-entry-app
+    env: python
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
+    envVars:
+      - key: SECRET_KEY
+        value: your-secret-key
+      - key: SQLALCHEMY_DATABASE_URI
+        value: your-database-url
+      - key: ACCOUNT_SID
+        value: your-twilio-account-sid
+      - key: AUTH_TOKEN
+        value: your-twilio-auth-token
+      - key: PH_NO
+        value: your-twilio-phone-number
