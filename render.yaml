@@ -2,13 +2,13 @@ services:
   - type: web
     name: college-entry-app
     env: python
-    buildCommand: cd cleaned_repo && pip install -r requirements.txt
-    startCommand: cd cleaned_repo && gunicorn main:app
+    buildCommand: pip install -r requirements.txt
+    startCommand: gunicorn main:app
     envVars:
       - key: SECRET_KEY
         value: supersecuresecretkey
       - key: SQLALCHEMY_DATABASE_URI
-        value: sqlite:///data.db
+        value: sqlite:///instance/data.db
       - key: ACCOUNT_SID
         value: ACxxxxxxxxxxxxxxxxxxxxxxxx
       - key: AUTH_TOKEN
