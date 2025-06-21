@@ -6,12 +6,13 @@ services:
     startCommand: gunicorn main:app
     envVars:
       - key: SECRET_KEY
-        value: your-secret-key
+        value: supersecuresecretkey
       - key: SQLALCHEMY_DATABASE_URI
-        value: your-database-url
+        value: sqlite:///data.db
       - key: ACCOUNT_SID
-        value: your-twilio-account-sid
+        value: ACxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx
       - key: AUTH_TOKEN
-        value: your-twilio-auth-token
+        value: your_twilio_auth_token
       - key: PH_NO
-        value: your-twilio-phone-number
+        value: +91XXXXXXXXXX
+
