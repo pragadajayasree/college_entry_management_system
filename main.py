@@ -1,30 +1,23 @@
 from datetime import date, datetime
-
-from flask import Flask, render_template, redirect, url_for, request, flash,session
-
+from flask import Flask, render_template, redirect, url_for, request, flash, session
 from flask_login import UserMixin
 from flask_sqlalchemy import SQLAlchemy
-from sqlalchemy import Integer, String,desc
+from sqlalchemy import Integer, String, desc
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column
-
-from forms import Search_form, Visitor_entry,Visitor_exit
+from forms import Search_form, Visitor_entry, Visitor_exit
 from twilio.rest import Client
 import os
 
-
 app = Flask(__name__)
-app.config['SECRET_KEY'] = os.environ['SECRET_KEY']
-
+app.config['SECRET_KEY'] = os.environ.get('SECRET_KEY', 'default-secret')
 
 class Base(DeclarativeBase):
     pass
 
-
-app.config['SQLALCHEMY_DATABASE_URI'] = os.environ['SQLALCHEMY_DATABASE_URI']
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get('SQLALCHEMY_DATABASE_URI', 'sqlite:///instance/data.db')
 
 db = SQLAlchemy(model_class=Base)
 db.init_app(app)
-
 
 class Students(UserMixin, db.Model):
     __tablename__ = "students"
@@ -35,7 +28,6 @@ class Students(UserMixin, db.Model):
     ph_no: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
 
-
 class Faculty(UserMixin, db.Model):
     __tablename__ = "faculty"
     id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
@@ -44,7 +36,6 @@ class Faculty(UserMixin, db.Model):
     dept: Mapped[str] = mapped_column(String, nullable=False)
     ph_no: Mapped[int] = mapped_column(Integer, unique=True, nullable=False)
     email: Mapped[str] = mapped_column(String, unique=True, nullable=False)
-
 
 class Entry_log(UserMixin, db.Model):
     __tablename__ = "entries"
@@ -61,31 +52,28 @@ class Entry_log(UserMixin, db.Model):
 
 class Visitors_log(UserMixin, db.Model):
     __tablename__ = "visitors"
-    id:Mapped[int]=mapped_column(Integer,primary_key=True,nullable=False)
-    name:Mapped[str] = mapped_column(String, nullable=False)
-    ph_no:Mapped[str] = mapped_column(String, nullable=False)
-    email:Mapped[str] = mapped_column(String, nullable=False)
-    faculty_name:Mapped[str] = mapped_column(String, nullable=False)
-    faculty_dept:Mapped[str] = mapped_column(String, nullable=False)
-    reason:Mapped[str] =mapped_column(String, nullable=False)
-    date:Mapped[str] =mapped_column(String, nullable=False)
-    entry_time:Mapped[str] =mapped_column(String, nullable=True)
-    exit_time:Mapped[str] =mapped_column(String, nullable=True)
-    status:Mapped[str]=mapped_column(String,nullable=False)
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, nullable=False)
+    name: Mapped[str] = mapped_column(String, nullable=False)
+    ph_no: Mapped[str] = mapped_column(String, nullable=False)
+    email: Mapped[str] = mapped_column(String, nullable=False)
+    faculty_name: Mapped[str] = mapped_column(String, nullable=False)
+    faculty_dept: Mapped[str] = mapped_column(String, nullable=False)
+    reason: Mapped[str] = mapped_column(String, nullable=False)
+    date: Mapped[str] = mapped_column(String, nullable=False)
+    entry_time: Mapped[str] = mapped_column(String, nullable=True)
+    exit_time: Mapped[str] = mapped_column(String, nullable=True)
+    status: Mapped[str] = mapped_column(String, nullable=False)
 
 with app.app_context():
     db.create_all()
-
 
 @app.route('/')
 def home():
     return render_template('home.html')
 
-
 @app.route('/safety')
 def safety():
     return render_template('safety.html')
-
 
 @app.route('/entry_log', methods=['GET', 'POST'])
 def entry_log():
@@ -127,7 +115,6 @@ def entry_log():
                 new_entry.exit_time = current_time
             else:
                 new_entry.entry_time = current_time
-
         else:
             if form.entry_exit.data.lower() == 'exit':
                 entry.exit_time = current_time
@@ -147,9 +134,15 @@ def visitors():
         session.pop('security_message')
     return render_template('visitors.html')
 
-def send_sms_to_faculty(visitor_id, faculty_phone, visitor_name,visitor_reason):
-    account_sid = os.environ['ACCOUNT_SID']
-    auth_token = os.environ['AUTH_TOKEN']
+def send_sms_to_faculty(visitor_id, faculty_phone, visitor_name, visitor_reason):
+    account_sid = os.environ.get('ACCOUNT_SID')
+    auth_token = os.environ.get('AUTH_TOKEN')
+    from_number = os.environ.get('PH_NO')
+
+    if not all([account_sid, auth_token, from_number]):
+        print("Missing Twilio credentials.")
+        return
+
     client = Client(account_sid, auth_token)
     public_url = request.host_url.rstrip('/')
 
@@ -158,14 +151,14 @@ def send_sms_to_faculty(visitor_id, faculty_phone, visitor_name,visitor_reason):
 
     message = f"""
     Visitor {visitor_name} wants to meet you.
-    reason:{visitor_reason}
+    reason: {visitor_reason}
     Accept: {accept_url}
     Reject: {reject_url}
     """
 
     client.messages.create(
         body=message,
-        from_=os.environ['PH_NO'],
+        from_=from_number,
         to=f'+91{faculty_phone}'
     )
 
@@ -182,7 +175,6 @@ def visitors_entry():
         current_date = date.today().strftime("%Y-%m-%d")
         current_time = datetime.now().strftime("%I:%M %p")
 
-        # Check if faculty exists
         result = db.session.execute(
             db.select(Faculty).where(Faculty.name == faculty_name)
         ).scalar()
@@ -230,10 +222,7 @@ def faculty_response(visitor_id, response):
     message = f"You have {response} the visitor request."
     return render_template("faculty_response.html", message=message)
 
-
-
-
-@app.route('/visitors_exit',methods=['GET','POST'])
+@app.route('/visitors_exit', methods=['GET', 'POST'])
 def visitors_exit():
     form = Visitor_exit()
     if request.method == 'POST' and form.validate_on_submit():
@@ -241,27 +230,51 @@ def visitors_exit():
         ph_no = form.ph_no.data
         current_date = date.today().strftime("%Y-%m-%d")
         current_time = datetime.now().strftime("%I:%M %p")
-        user = db.session.execute(db.select(Visitors_log).where(Visitors_log.name==name,Visitors_log.ph_no==ph_no,Visitors_log.date==current_date)).scalar()
-        user.exit_time=current_time
+        user = db.session.execute(
+            db.select(Visitors_log).where(
+                Visitors_log.name == name,
+                Visitors_log.ph_no == ph_no,
+                Visitors_log.date == current_date
+            )
+        ).scalar()
+        user.exit_time = current_time
         db.session.commit()
         return redirect(url_for('visitors'))
-    return render_template('visitors_exit.html',form=form)
+    return render_template('visitors_exit.html', form=form)
 
 @app.route('/reports')
 def reports():
     current_date = date.today().strftime("%Y-%m-%d")
-    students = db.session.execute(db.select(Entry_log).where(Entry_log.role=='STUDENT',Entry_log.date==current_date).order_by(desc(Entry_log.entry_time))).scalars()
-    faculty = db.session.execute(db.select(Entry_log).where(Entry_log.role=='FACULTY',Entry_log.date==current_date).order_by(desc(Entry_log.entry_time))).scalars()
-    visitors = db.session.execute(db.select(Visitors_log).where(Visitors_log.date==current_date).order_by(desc(Visitors_log.entry_time))).scalars()
-    return render_template('reports.html',students=students,faculty=faculty,visitors=visitors)
+    students = db.session.execute(
+        db.select(Entry_log).where(
+            Entry_log.role == 'STUDENT',
+            Entry_log.date == current_date
+        ).order_by(desc(Entry_log.entry_time))
+    ).scalars()
+    faculty = db.session.execute(
+        db.select(Entry_log).where(
+            Entry_log.role == 'FACULTY',
+            Entry_log.date == current_date
+        ).order_by(desc(Entry_log.entry_time))
+    ).scalars()
+    visitors = db.session.execute(
+        db.select(Visitors_log).where(
+            Visitors_log.date == current_date
+        ).order_by(desc(Visitors_log.entry_time))
+    ).scalars()
+    return render_template('reports.html', students=students, faculty=faculty, visitors=visitors)
 
-@app.route('/search',methods=['POST'])
+@app.route('/search', methods=['POST'])
 def search():
-   result = request.form['query'].upper()
-   list = db.session.execute(db.select(Entry_log).where(Entry_log.name==result).order_by(desc(Entry_log.entry_time))).scalars()
-   visitor = db.session.execute(db.select(Visitors_log).where(Visitors_log.name==result).order_by(desc(Visitors_log.entry_time))).scalars()
-   return render_template('search.html',list=list,visitors=visitor)
-
-
-if __name__ == "__main__":
-    app.run()
+    result = request.form['query'].upper()
+    list = db.session.execute(
+        db.select(Entry_log).where(
+            Entry_log.name == result
+        ).order_by(desc(Entry_log.entry_time))
+    ).scalars()
+    visitor = db.session.execute(
+        db.select(Visitors_log).where(
+            Visitors_log.name == result
+        ).order_by(desc(Visitors_log.entry_time))
+    ).scalars()
+    return render_template('search.html', list=list, visitors=visitor)
